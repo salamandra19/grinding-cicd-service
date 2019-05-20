@@ -1,0 +1,50 @@
+version: "3.7"
+
+networks:
+    example:
+        external: true
+
+volumes:
+    traefik:
+
+services:
+    traefik:
+        deploy:
+            mode: global
+        image: "traefik:2.0.0-alpha4" # This is the latest version at the moment.
+        labels:
+            traefik.enable: "true"
+            traefik.http.services.traefik-ui.loadbalancer.server.port: 8080
+            traefik.http.middlewares.https-only.redirectscheme.scheme: "https"
+            traefik.http.routers.traefik.rule: "Host(`traefik.salamandra.powerman.name`)"
+            traefik.http.routers.traefik.middlewares: "https-only"
+            traefik.http.routers.traefik-tls.rule: "Host(`traefik.salamandra.powerman.name`)"
+            traefik.http.routers.traefik-tls.tls: "true"
+            traefik.http.routers.traefik-tls.service: "traefik-ui"
+        networks:
+            example:
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - "/var/run/docker.sock:/var/run/docker.sock"
+            - "traefik:/data"
+        command: >
+            --api
+            --entrypoints='Name:http Address::80'
+            --entrypoints='Name:https Address::443'
+            --providers
+            --providers.docker
+            --providers.docker.exposedbydefault=false
+            --providers.docker.watch
+            --providers.docker.network=example
+            --acme.email=powerman@powerman.name
+            --acme.storage=/data/acme.json
+            --acme.onhostrule=true
+            --acme.entrypoint=https
+            --acme.httpchallenge
+            --acme.httpchallenge.entrypoint=http
+            --log
+            --log.level=debug
+            --accesslog
+            --acme.acmelogging
